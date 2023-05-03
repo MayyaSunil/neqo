@@ -88,8 +88,7 @@ fn datagrams_server_only() {
     );
     assert_eq!(
         wt.max_datagram_size(wt_session.stream_id()),
-        Ok(DATAGRAM_SIZE
-            - u64::try_from(Encoder::varint_len(wt_session.stream_id().as_u64())).unwrap())
+        Err(Error::TransportError(TransportError::NotAvailable))
     );
 
     assert_eq!(
@@ -113,8 +112,7 @@ fn datagrams_client_only() {
 
     assert_eq!(
         wt_session.max_datagram_size(),
-        Ok(DATAGRAM_SIZE
-            - u64::try_from(Encoder::varint_len(wt_session.stream_id().as_u64())).unwrap())
+        Err(Error::TransportError(TransportError::NotAvailable))
     );
     assert_eq!(
         wt.max_datagram_size(wt_session.stream_id()),

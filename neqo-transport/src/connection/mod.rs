@@ -3221,7 +3221,8 @@ impl Connection {
     /// # Panics
     /// Basically never, because that unwrap won't fail.
     pub fn max_datagram_size(&self) -> Res<u64> {
-        let max_dgram_size = self.quic_datagrams.remote_datagram_size();
+        let remote_dgram_size = self.quic_datagrams.remote_datagram_size();
+        let max_dgram_size = min(remote_dgram_size, self.conn_params.get_datagram_size());
         if max_dgram_size == 0 {
             return Err(Error::NotAvailable);
         }

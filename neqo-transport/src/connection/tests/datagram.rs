@@ -69,10 +69,7 @@ fn datagram_enabled_on_client() {
     connect_force_idle(&mut client, &mut server);
 
     assert_eq!(client.max_datagram_size(), Err(Error::NotAvailable));
-    assert_eq!(
-        server.max_datagram_size(),
-        Ok(DATAGRAM_LEN_SMALLER_THAN_MTU)
-    );
+    assert_eq!(server.max_datagram_size(), Err(Error::NotAvailable));
     assert_eq!(
         client.send_datagram(DATA_SMALLER_THAN_MTU, Some(1)),
         Err(Error::TooMuchData)
@@ -96,10 +93,7 @@ fn datagram_enabled_on_server() {
         new_server(ConnectionParameters::default().datagram_size(DATAGRAM_LEN_SMALLER_THAN_MTU));
     connect_force_idle(&mut client, &mut server);
 
-    assert_eq!(
-        client.max_datagram_size(),
-        Ok(DATAGRAM_LEN_SMALLER_THAN_MTU)
-    );
+    assert_eq!(client.max_datagram_size(), Err(Error::NotAvailable));
     assert_eq!(server.max_datagram_size(), Err(Error::NotAvailable));
     assert_eq!(
         server.send_datagram(DATA_SMALLER_THAN_MTU, Some(1)),
