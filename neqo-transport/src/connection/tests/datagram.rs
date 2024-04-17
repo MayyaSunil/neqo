@@ -87,6 +87,17 @@ fn datagram_enabled_on_client() {
 }
 
 #[test]
+fn datagram_max_size_test() {
+    let mut client =
+        new_client(ConnectionParameters::default().datagram_size(DATAGRAM_LEN_SMALLER_THAN_MTU));
+    let mut server =
+        new_server(ConnectionParameters::default().datagram_size(100));
+    connect_force_idle(&mut client, &mut server);
+    assert_eq!(client.max_datagram_size(), Ok(100));
+    assert_eq!(server.max_datagram_size(), Ok(100));
+}
+
+#[test]
 fn datagram_enabled_on_server() {
     let mut client = default_client();
     let mut server =
@@ -118,6 +129,17 @@ fn connect_datagram() -> (Connection, Connection) {
             .outgoing_datagram_queue(OUTGOING_QUEUE),
     );
     let mut server = new_server(ConnectionParameters::default().datagram_size(MAX_QUIC_DATAGRAM));
+    connect_force_idle(&mut client, &mut server);
+    (client, server)
+}
+
+fn connect_datagram_2() -> (Connection, Connection) {
+    let mut client = new_client(
+        ConnectionParameters::default()
+            .datagram_size(DATA_BIGGER_THAN_MTU.len())
+            .outgoing_datagram_queue(OUTGOING_QUEUE),
+    );
+    let mut server = new_server(ConnectionParameters::default().datagram_size(DATA_BIGGER_THAN_MTU.len()));
     connect_force_idle(&mut client, &mut server);
     (client, server)
 }
@@ -161,6 +183,30 @@ fn limit_data_size() {
         client.next_event().unwrap(),
         ConnectionEvent::OutgoingDatagramOutcome { id, outcome } if id == 1 && outcome == OutgoingDatagramOutcome::DroppedTooBig
     ));
+}
+
+#[test]
+fn limit_data_size_2() {
+    let (mut client, mut server) = connect_datagram_2();
+
+    assert!(u64::try_from(DATA_BIGGER_THAN_MTU.len()).unwrap() > DATAGRAM_LEN_MTU);
+    // Datagram can be queued because they are smaller than allowed by the peer,
+    // but they cannot be sent.
+    assert_eq!(server.send_datagram(DATA_BIGGER_THAN_MTU, Some(1)), Ok(()));
+
+    let dgram_dropped_s = server.stats().datagram_tx.dropped_too_big;
+    let dgram_sent_s = server.stats().frame_tx.datagram;
+    assert!(server.process_output(now()).dgram().is_none());
+    assert_eq!(
+        server.stats().datagram_tx.dropped_too_big,
+        dgram_dropped_s + 1
+    );
+    
+    // The same test for the client side.
+    assert_eq!(client.send_datagram(DATA_BIGGER_THAN_MTU, Some(1)), Ok(()));
+    let dgram_sent_c = client.stats().frame_tx.datagram;
+    assert!(client.process_output(now()).dgram().is_none());
+    assert_eq!(client.stats().frame_tx.datagram, dgram_sent_c);
 }
 
 #[test]
